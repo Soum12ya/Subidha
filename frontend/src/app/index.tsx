@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ROUTES } from '@/routes';
 import {
   View,
   Text,
@@ -7,7 +8,7 @@ import {
   useWindowDimensions,
   Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck,
   UserCheck,
@@ -16,7 +17,7 @@ import {
   Clock,
   FileText,
   HelpCircle,
-} from 'lucide-react-native';
+} from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { DEMO_PLANS, DEMO_SERVICES } from '@/mocks/services';
@@ -27,14 +28,14 @@ import { PrimaryButton, SecondaryButton } from '@/components/common/Buttons';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ModalDialog } from '@/components/common/ModalDialog';
 
-// Future Play Store / App Store / APK Download Link
-const FUTURE_APP_DOWNLOAD_URL = 'https://expo.dev';
+// Add the official SUBIDHA app download URL when it becomes available.
+const FUTURE_APP_DOWNLOAD_URL: string | null = null;
 
 export default function LandingPage() {
   const { mode, colors } = useAppTheme();
   const { setSelectedRole, showToast } = useAppState();
   const { width } = useWindowDimensions();
-  const router = useRouter();
+  const navigate = useNavigate();
   const isWide = width >= 960;
 
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
@@ -47,9 +48,19 @@ export default function LandingPage() {
   };
 
   const handleConfirmDownloadRedirect = () => {
+    if (!FUTURE_APP_DOWNLOAD_URL) {
+      setDownloadModalVisible(false);
+      showToast(
+        'The SUBIDHA mobile app is coming soon. Please use our website for now.',
+      );
+      return;
+    }
+
+    Linking.openURL(FUTURE_APP_DOWNLOAD_URL).catch(() => {
+      showToast('Unable to open the app download link. Please try again.');
+    });
+    
     setDownloadModalVisible(false);
-    showToast('Redirecting to SUBIDHA Mobile App installer...');
-    Linking.openURL(FUTURE_APP_DOWNLOAD_URL).catch(() => {});
   };
 
   return (
@@ -82,14 +93,6 @@ export default function LandingPage() {
               <PrimaryButton
                 label="Download Mobile App"
                 onPress={handleTriggerAppDownload}
-              />
-              <SecondaryButton
-                label="Explore Services"
-                onPress={() => router.push('/services')}
-              />
-              <SecondaryButton
-                label="Web Portal Sign In"
-                onPress={() => router.push('/auth')}
               />
             </View>
           </View>
@@ -149,7 +152,7 @@ export default function LandingPage() {
               label="Continue as Customer"
               onPress={() => {
                 setSelectedRole('customer');
-                router.push('/auth/login/customer');
+                navigate(ROUTES.auth.login.customer);
               }}
             />
           </View>
@@ -174,7 +177,7 @@ export default function LandingPage() {
               label="Continue as Business Partner"
               onPress={() => {
                 setSelectedRole('business');
-                router.push('/auth/login/business');
+                navigate(ROUTES.auth.login.business);
               }}
             />
           </View>
@@ -424,7 +427,7 @@ export default function LandingPage() {
             </Text>
             <PrimaryButton
               label="Launch Customer Login"
-              onPress={() => router.push('/auth/login/customer')}
+              onPress={() => navigate(ROUTES.auth.login.customer)}
             />
           </View>
 
@@ -443,7 +446,7 @@ export default function LandingPage() {
             </Text>
             <SecondaryButton
               label="Launch Business Login"
-              onPress={() => router.push('/auth/login/business')}
+              onPress={() => navigate(ROUTES.auth.login.business)}
             />
           </View>
         </View>

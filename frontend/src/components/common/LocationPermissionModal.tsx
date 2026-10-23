@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
-import { MapPin, Navigation, ShieldCheck } from 'lucide-react-native';
+import { MapPin, Navigation, ShieldCheck } from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 

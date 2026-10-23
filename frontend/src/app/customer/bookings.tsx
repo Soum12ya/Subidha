@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Bike, Phone, Star, CheckCircle2 } from 'lucide-react-native';
+import { Bike, Phone, Star, CheckCircle2 } from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 

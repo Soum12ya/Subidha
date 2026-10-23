@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { Sun, Moon } from 'lucide-react-native';
+import { Sun, Moon } from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 
 export const ThemeToggle: React.FC = () => {

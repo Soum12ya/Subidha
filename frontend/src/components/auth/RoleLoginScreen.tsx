@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigate } from 'react-router-dom';
+
+import { ROUTES } from '@/routes';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { UserRole } from '@/types';
@@ -9,6 +12,7 @@ import {
   loginWithPhone,
   normalizeIndianPhone,
 } from '@/services/auth.service';
+
 import { AppLogo } from '@/components/common/AppLogo';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { FormField } from '@/components/common/FormField';
@@ -19,51 +23,88 @@ interface RoleLoginScreenProps {
   initialRole: UserRole;
 }
 
-export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole }) => {
+export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({
+  initialRole,
+}) => {
   const { colors } = useAppTheme();
-  const { selectedRole, setSelectedRole, prefilledPhone, setPrefilledPhone } =
-    useAppState();
-  const router = useRouter();
+
+  const {
+    selectedRole,
+    setSelectedRole,
+    prefilledPhone,
+    setPrefilledPhone,
+    showToast,
+  } = useAppState();
+
+  const navigate = useNavigate();
 
   const [role, setRole] = useState<UserRole>(initialRole || selectedRole);
   const [phone, setPhone] = useState<string>(prefilledPhone || '');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [unregisteredModalVisible, setUnregisteredModalVisible] = useState<boolean>(false);
+  const [unregisteredModalVisible, setUnregisteredModalVisible] =
+    useState<boolean>(false);
 
   useEffect(() => {
-    setRole(initialRole);
-    setSelectedRole(initialRole);
-  }, [initialRole, setSelectedRole]);
+    setRole(initialRole || selectedRole);
+    setSelectedRole(initialRole || selectedRole);
+  }, [initialRole, selectedRole, setSelectedRole]);
+
+  useEffect(() => {
+    if (prefilledPhone) {
+      setPhone(prefilledPhone);
+    }
+  }, [prefilledPhone]);
+
+  const getSignupRoute = (currentRole: UserRole) =>
+    currentRole === 'customer'
+      ? ROUTES.auth.signup.customer
+      : ROUTES.auth.signup.business;
 
   const handleRoleSwitch = (nextRole: UserRole) => {
     setRole(nextRole);
     setSelectedRole(nextRole);
     setError('');
+    // Keep the URL and selected role in sync so role-specific login routes
+    // cannot reset the user's choice back to their previous role.
+    navigate(
+      nextRole === 'customer'
+        ? ROUTES.auth.login.customer
+        : ROUTES.auth.login.business,
+      { replace: true },
+    );
   };
 
   const handleContinue = async () => {
+    if (loading) return;
+
     setError('');
+
     const cleaned = normalizeIndianPhone(phone);
 
     if (!isValidIndianPhone(cleaned)) {
-      setError('Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
+      setError(
+        'Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.',
+      );
       return;
     }
 
     setLoading(true);
+
     try {
       const lookup = await loginWithPhone(cleaned, role);
+
       setPrefilledPhone(cleaned);
 
       if (lookup.exists) {
-        router.push({
-          pathname: '/auth/verify-otp',
-          params: { phone: cleaned, role },
+        navigate(ROUTES.auth.verifyOtp, {
+          state: { phone: cleaned, role },
         });
       } else {
         setUnregisteredModalVisible(true);
       }
+    } catch {
+      setError('Unable to continue right now. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -71,12 +112,27 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
 
   const handleRegisterNow = () => {
     const cleaned = normalizeIndianPhone(phone);
+
     setPrefilledPhone(cleaned);
     setSelectedRole(role);
     setUnregisteredModalVisible(false);
-    router.push({
-      pathname: role === 'customer' ? '/auth/signup/customer' : '/auth/signup/business',
-      params: { phone: cleaned, role },
+
+    navigate(getSignupRoute(role), {
+      state: { phone: cleaned, role },
+    });
+  };
+
+  const handleSignupNavigation = () => {
+    const cleaned = normalizeIndianPhone(phone);
+
+    setPrefilledPhone(cleaned);
+    setSelectedRole(role);
+
+    navigate(getSignupRoute(role), {
+      state: {
+        phone: cleaned,
+        role,
+      },
     });
   };
 
@@ -84,6 +140,7 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={styles.outer}
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.topRow}>
         <AppLogo />
@@ -102,30 +159,39 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
         <Text style={[styles.eyebrow, { color: colors.primaryAccent }]}>
           ACCOUNT AUTHENTICATION
         </Text>
+
         <Text style={[styles.title, { color: colors.primaryText }]}>
           Welcome to SUBIDHA
         </Text>
+
         <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
           Select your account type and enter your registered mobile number.
         </Text>
 
-        {/* Role Selector */}
         <View
           style={[
             styles.roleSwitcher,
-            { backgroundColor: colors.secondaryBackground, borderColor: colors.border },
+            {
+              backgroundColor: colors.secondaryBackground,
+              borderColor: colors.border,
+            },
           ]}
         >
-          {(['customer', 'business'] as UserRole[]).map((r) => {
-            const active = role === r;
+          {(['customer', 'business'] as UserRole[]).map((item) => {
+            const active = role === item;
+
             return (
               <Pressable
-                key={r}
-                onPress={() => handleRoleSwitch(r)}
+                key={item}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => handleRoleSwitch(item)}
                 style={[
                   styles.roleTab,
                   {
-                    backgroundColor: active ? colors.primaryAccent : 'transparent',
+                    backgroundColor: active
+                      ? colors.primaryAccent
+                      : 'transparent',
                   },
                 ]}
               >
@@ -133,11 +199,15 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
                   style={[
                     styles.roleTabText,
                     {
-                      color: active ? colors.buttonTextOnAccent : colors.secondaryText,
+                      color: active
+                        ? colors.buttonTextOnAccent
+                        : colors.secondaryText,
                     },
                   ]}
                 >
-                  {r === 'customer' ? 'Customer / Individual' : 'Business / Partner'}
+                  {item === 'customer'
+                    ? 'Customer / Individual'
+                    : 'Business / Partner'}
                 </Text>
               </Pressable>
             );
@@ -151,9 +221,12 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
           keyboardType="phone-pad"
           maxLength={10}
           value={phone}
-          onChangeText={(t) => {
-            setPhone(t.replace(/\D/g, ''));
-            if (error) setError('');
+          onChangeText={(value) => {
+            setPhone(value.replace(/\D/g, ''));
+
+            if (error) {
+              setError('');
+            }
           }}
           error={error}
           helperText={
@@ -172,22 +245,19 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
 
         <View style={styles.linksFooter}>
           <Pressable
-            onPress={() =>
-              router.push({
-                pathname:
-                  role === 'customer'
-                    ? '/auth/signup/customer'
-                    : '/auth/signup/business',
-                params: { phone: normalizeIndianPhone(phone), role },
-              })
-            }
+            accessibilityRole="button"
+            onPress={handleSignupNavigation}
           >
             <Text style={[styles.linkText, { color: colors.primaryAccent }]}>
-              New to SUBIDHA? Register as {role === 'customer' ? 'Customer' : 'Business'}
+              New to SUBIDHA? Register as{' '}
+              {role === 'customer' ? 'Customer' : 'Business'}
             </Text>
           </Pressable>
 
-          <Pressable onPress={() => router.push('/')}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigate(ROUTES.home)}
+          >
             <Text style={[styles.backLink, { color: colors.secondaryText }]}>
               ← Back to Home
             </Text>
@@ -195,7 +265,6 @@ export const RoleLoginScreen: React.FC<RoleLoginScreenProps> = ({ initialRole })
         </View>
       </View>
 
-      {/* Required Unregistered Mobile Number Modal */}
       <ModalDialog
         visible={unregisteredModalVisible}
         title="This mobile number is not registered."
@@ -257,12 +326,15 @@ const styles = StyleSheet.create({
   roleTab: {
     flex: 1,
     paddingVertical: 10,
+    paddingHorizontal: 4,
     borderRadius: 9,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   roleTabText: {
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
   },
   linksFooter: {
     marginTop: 22,
@@ -272,6 +344,7 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   backLink: {
     fontSize: 13,

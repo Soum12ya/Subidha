@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ROUTES } from '@/routes';
 import {
   View,
   Text,
@@ -7,7 +8,7 @@ import {
   useWindowDimensions,
   Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   UserCheck,
@@ -19,7 +20,7 @@ import {
   ShoppingBag,
   ShieldCheck,
   Smartphone,
-} from 'lucide-react-native';
+} from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { ModalDialog } from '@/components/common/ModalDialog';
@@ -29,7 +30,7 @@ export default function CustomerDashboardPage() {
   const { user, showToast } = useAppState();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
-  const router = useRouter();
+  const navigate = useNavigate();
   const [sosModalOpen, setSosModalOpen] = useState(false);
 
   if (!user || user.role !== 'customer') return null;
@@ -171,7 +172,7 @@ export default function CustomerDashboardPage() {
           </View>
 
           <Pressable
-            onPress={() => router.push('/customer/profile')}
+            onPress={() => navigate(ROUTES.customer.profile)}
             style={styles.avatarCircle}
           >
             <Text style={styles.avatarInitials}>{initials}</Text>
@@ -215,9 +216,9 @@ export default function CustomerDashboardPage() {
               </Text>
               <Pressable
                 onPress={() =>
-                  router.push({
+                  navigate({
                     pathname: '/customer/services',
-                    params: { serviceId: b.serviceId },
+                    search: `?serviceId=${encodeURIComponent(b.serviceId)}`,
                   })
                 }
                 style={[styles.promoBtn, { backgroundColor: b.btnBg }]}
@@ -259,13 +260,14 @@ export default function CustomerDashboardPage() {
             <Pressable
               onPress={() => {
                 if (item.id === 'srv-download-app') {
-                  showToast('Redirecting to SUBIDHA Mobile App Download...');
-                  Linking.openURL('https://expo.dev').catch(() => {});
+                  showToast(
+                    'The SUBIDHA mobile app is coming soon. Please use our website for now.'
+                  );
                   return;
                 }
-                router.push({
+                navigate({
                   pathname: '/customer/services',
-                  params: { serviceId: item.id.replace('-2', '') },
+                  search: `?serviceId=${encodeURIComponent(item.id.replace('-2', ''))}`,
                 });
               }}
               style={styles.cardActionBtn}
@@ -297,7 +299,7 @@ export default function CustomerDashboardPage() {
         </View>
 
         <Pressable
-          onPress={() => router.push('/customer/bookings')}
+          onPress={() => navigate(ROUTES.customer.bookings)}
           style={[
             styles.trackLiveButton,
             { minWidth: isDesktop ? 220 : undefined },

@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
-import { useRouter } from 'expo-router';
+import { useNavigate } from 'react-router-dom';
+
+import { ROUTES } from '@/routes';
 import { useAppTheme } from '@/context/ThemeContext';
 
 interface AppLogoProps {
@@ -9,16 +11,27 @@ interface AppLogoProps {
   disableLink?: boolean;
 }
 
-export const AppLogo: React.FC<AppLogoProps> = ({ size = 'md', disableLink = false }) => {
+export const AppLogo: React.FC<AppLogoProps> = ({
+  size = 'md',
+  disableLink = false,
+}) => {
   const { colors } = useAppTheme();
-  const router = useRouter();
+  const navigate = useNavigate();
+
   const iconDim = size === 'sm' ? 28 : size === 'lg' ? 40 : 34;
   const fontSize = size === 'sm' ? 17 : size === 'lg' ? 24 : 20;
 
   const content = (
     <View style={styles.container}>
-      <Svg width={iconDim} height={iconDim} viewBox="0 0 40 40" fill="none">
-        <Rect
+      <svg
+        width={iconDim}
+        height={iconDim}
+        viewBox="0 0 40 40"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <rect
           x="2"
           y="2"
           width="36"
@@ -28,23 +41,35 @@ export const AppLogo: React.FC<AppLogoProps> = ({ size = 'md', disableLink = fal
           stroke={colors.primaryAccent}
           strokeWidth="2"
         />
-        <Path
+
+        <path
           d="M12 24C12 18.5 16.5 15 21.5 15H27M27 15L23.5 11.5M27 15L23.5 18.5"
           stroke={colors.primaryAccent}
           strokeWidth="2.4"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Path
+
+        <path
           d="M28 17C28 22.5 23.5 26 18.5 26H13"
           stroke={colors.secondaryAccent}
           strokeWidth="2.2"
           strokeLinecap="round"
         />
-        <Circle cx="13" cy="26" r="2.5" fill={colors.primaryAccent} />
-      </Svg>
+
+        <circle cx="13" cy="26" r="2.5" fill={colors.primaryAccent} />
+      </svg>
+
       <View>
-        <Text style={[styles.wordmark, { color: colors.primaryText, fontSize }]}>SUBIDHA</Text>
+        <Text
+          style={[
+            styles.wordmark,
+            { color: colors.primaryText, fontSize },
+          ]}
+        >
+          SUBIDHA
+        </Text>
+
         {size === 'lg' && (
           <Text style={[styles.tagline, { color: colors.secondaryText }]}>
             CONCIERGE & LOGISTICS
@@ -54,11 +79,13 @@ export const AppLogo: React.FC<AppLogoProps> = ({ size = 'md', disableLink = fal
     </View>
   );
 
-  if (disableLink) return content;
+  if (disableLink) {
+    return content;
+  }
 
   return (
     <Pressable
-      onPress={() => router.push('/')}
+      onPress={() => navigate(ROUTES.home)}
       accessibilityRole="link"
       accessibilityLabel="SUBIDHA Home"
     >

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
-import { AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react-native';
+import { AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { PrimaryButton, SecondaryButton } from './Buttons';
 

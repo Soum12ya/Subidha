@@ -1,6 +1,7 @@
 import React from 'react';
+import { ROUTES } from '@/routes';
 import { View, Text, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { PrimaryButton, SecondaryButton } from '@/components/common/Buttons';
@@ -9,7 +10,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 export default function BusinessDashboardPage() {
   const { colors } = useAppTheme();
   const { user, tasks, changeTaskStatus, showToast } = useAppState();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   if (!user || user.role !== 'business') return null;
 
@@ -77,7 +78,7 @@ export default function BusinessDashboardPage() {
       <View style={styles.ctaRow}>
         <PrimaryButton
           label="+ Single Pickup"
-          onPress={() => router.push('/business/tasks')}
+          onPress={() => navigate(ROUTES.business.tasks)}
           style={{ flex: 1 }}
         />
         <SecondaryButton
@@ -129,7 +130,7 @@ export default function BusinessDashboardPage() {
                 onPress={() =>
                   t.status === 'Queued'
                     ? changeTaskStatus(t.id, 'Assigned')
-                    : router.push('/business/fleet')
+                    : navigate(ROUTES.business.fleet)
                 }
               />
             </View>

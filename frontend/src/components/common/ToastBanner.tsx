@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { CheckCircle2 } from 'lucide-react-native';
+import { CheckCircle2 } from 'lucide-react';
 import { useAppState } from '@/context/AppStateContext';
 import { useAppTheme } from '@/context/ThemeContext';
 

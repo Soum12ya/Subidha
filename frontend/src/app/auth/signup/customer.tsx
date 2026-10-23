@@ -1,19 +1,30 @@
-import React, { useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+
+import { ROUTES } from '@/routes';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { registerCustomer } from '@/services/auth.service';
+import { normalizeIndianPhone } from '@/services/auth.service';
+
 import { AppLogo } from '@/components/common/AppLogo';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { FormField } from '@/components/common/FormField';
 import { PrimaryButton } from '@/components/common/Buttons';
 
 const customerSchema = z.object({
-  fullName: z.string().min(2, 'Full name is required'),
+  fullName: z.string().trim().min(2, 'Full name is required'),
   phone: z
     .string()
     .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
@@ -22,22 +33,40 @@ const customerSchema = z.object({
     .email('Enter a valid email address')
     .optional()
     .or(z.literal('')),
-  city: z.string().min(2, 'City is required'),
-  preferredLanguage: z.string().min(2, 'Preferred language is required'),
+  city: z.string().trim().min(2, 'City is required'),
+  preferredLanguage: z
+    .string()
+    .trim()
+    .min(2, 'Preferred language is required'),
   emergencyContactName: z.string().optional(),
-  emergencyContactPhone: z.string().optional(),
-  consentAccepted: z.boolean().refine((v) => v === true, {
+  emergencyContactPhone: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || /^[6-9]\d{9}$/.test(value),
+      'Enter a valid 10-digit emergency contact number',
+    ),
+  consentAccepted: z.boolean().refine((value) => value, {
     message: 'You must accept the terms and privacy notice to continue',
   }),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
 
+interface SignupLocationState {
+  phone?: string;
+}
+
 export default function CustomerSignupPage() {
   const { colors } = useAppTheme();
-  const { prefilledPhone, setSelectedRole } = useAppState();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ phone?: string }>();
+  const { prefilledPhone, setSelectedRole, setPrefilledPhone } = useAppState();
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const params = (location.state ?? {}) as SignupLocationState;
+
+  const [submitError, setSubmitError] = useState('');
 
   const {
     control,
@@ -48,7 +77,7 @@ export default function CustomerSignupPage() {
     resolver: zodResolver(customerSchema),
     defaultValues: {
       fullName: '',
-      phone: params.phone || prefilledPhone || '',
+      phone: normalizeIndianPhone(params.phone || prefilledPhone || ''),
       email: '',
       city: 'Kolkata',
       preferredLanguage: 'English',
@@ -60,23 +89,51 @@ export default function CustomerSignupPage() {
 
   useEffect(() => {
     setSelectedRole('customer');
-    if (params.phone) {
-      setValue('phone', params.phone);
+
+    const phoneToUse = params.phone || prefilledPhone;
+
+    if (phoneToUse) {
+      setValue('phone', normalizeIndianPhone(phoneToUse), {
+        shouldValidate: true,
+      });
     }
-  }, [params.phone, setSelectedRole, setValue]);
+  }, [params.phone, prefilledPhone, setSelectedRole, setValue]);
 
   const onSubmit = async (values: CustomerFormValues) => {
-    await registerCustomer(values);
-    router.push({
-      pathname: '/auth/verify-otp',
-      params: { phone: values.phone, role: 'customer' },
-    });
+    setSubmitError('');
+
+    const normalizedValues = {
+      ...values,
+      phone: normalizeIndianPhone(values.phone),
+      emergencyContactPhone: values.emergencyContactPhone
+        ? normalizeIndianPhone(values.emergencyContactPhone)
+        : '',
+    };
+
+    try {
+      await registerCustomer(normalizedValues);
+
+      setPrefilledPhone(normalizedValues.phone);
+      setSelectedRole('customer');
+
+      navigate(ROUTES.auth.verifyOtp, {
+        state: {
+          phone: normalizedValues.phone,
+          role: 'customer',
+        },
+      });
+    } catch {
+      setSubmitError(
+        'We could not complete your registration. Please check your details and try again.',
+      );
+    }
   };
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={styles.outer}
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.topRow}>
         <AppLogo />
@@ -86,17 +143,23 @@ export default function CustomerSignupPage() {
       <View
         style={[
           styles.card,
-          { backgroundColor: colors.cardBackground, borderColor: colors.border },
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+          },
         ]}
       >
         <Text style={[styles.eyebrow, { color: colors.primaryAccent }]}>
           CUSTOMER REGISTRATION
         </Text>
+
         <Text style={[styles.title, { color: colors.primaryText }]}>
           Create Your Personal Assistance Account
         </Text>
+
         <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
-          Register your mobile number for individual or family concierge services.
+          Register your mobile number for individual or family concierge
+          services.
         </Text>
 
         <Controller
@@ -124,7 +187,7 @@ export default function CustomerSignupPage() {
               keyboardType="phone-pad"
               maxLength={10}
               value={value}
-              onChangeText={(t) => onChange(t.replace(/\D/g, ''))}
+              onChangeText={(text) => onChange(text.replace(/\D/g, ''))}
               error={errors.phone?.message}
             />
           )}
@@ -198,7 +261,8 @@ export default function CustomerSignupPage() {
               keyboardType="phone-pad"
               maxLength={10}
               value={value}
-              onChangeText={(t) => onChange(t.replace(/\D/g, ''))}
+              onChangeText={(text) => onChange(text.replace(/\D/g, ''))}
+              error={errors.emergencyContactPhone?.message}
             />
           )}
         />
@@ -207,7 +271,7 @@ export default function CustomerSignupPage() {
           control={control}
           name="consentAccepted"
           render={({ field: { onChange, value } }) => (
-            <View style={{ marginBottom: 18 }}>
+            <View style={styles.consentContainer}>
               <Pressable
                 onPress={() => onChange(!value)}
                 style={styles.checkboxRow}
@@ -219,22 +283,52 @@ export default function CustomerSignupPage() {
                     styles.checkbox,
                     {
                       borderColor: colors.primaryAccent,
-                      backgroundColor: value ? colors.primaryAccent : 'transparent',
+                      backgroundColor: value
+                        ? colors.primaryAccent
+                        : 'transparent',
                     },
                   ]}
-                />
-                <Text style={[styles.consentText, { color: colors.secondaryText }]}>
-                  I agree to the SUBIDHA Terms of Service and Privacy Policy (Demo Account).
+                >
+                  {value ? (
+                    <Text
+                      style={[
+                        styles.checkmark,
+                        { color: colors.buttonTextOnAccent },
+                      ]}
+                    >
+                      ✓
+                    </Text>
+                  ) : null}
+                </View>
+
+                <Text
+                  style={[
+                    styles.consentText,
+                    { color: colors.secondaryText },
+                  ]}
+                >
+                  I agree to the SUBIDHA Terms of Service and Privacy Policy
+                  (Demo Account).
                 </Text>
               </Pressable>
+
               {errors.consentAccepted ? (
-                <Text style={{ color: colors.sos, fontSize: 12, marginTop: 4 }}>
+                <Text style={[styles.errorText, { color: colors.sos }]}>
                   {errors.consentAccepted.message}
                 </Text>
               ) : null}
             </View>
           )}
         />
+
+        {submitError ? (
+          <Text
+            accessibilityRole="alert"
+            style={[styles.submitError, { color: colors.sos }]}
+          >
+            {submitError}
+          </Text>
+        ) : null}
 
         <PrimaryButton
           label="Register & Proceed to OTP"
@@ -244,11 +338,30 @@ export default function CustomerSignupPage() {
         />
 
         <Pressable
-          onPress={() => router.push('/auth/login/customer')}
-          style={{ marginTop: 16, alignItems: 'center' }}
+          accessibilityRole="button"
+          onPress={() => navigate(ROUTES.auth.login.customer)}
+          style={styles.signInLink}
         >
-          <Text style={{ color: colors.primaryAccent, fontSize: 14, fontWeight: '600' }}>
+          <Text
+            style={[
+              styles.signInText,
+              { color: colors.primaryAccent },
+            ]}
+          >
             Already registered? Sign In
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            setSelectedRole('business');
+            navigate(ROUTES.auth.signup.business);
+          }}
+          style={styles.signInLink}
+        >
+          <Text style={[styles.signInText, { color: colors.secondaryText }]}>
+            Want to register as Business? Register as Business Partner
           </Text>
         </Pressable>
       </View>
@@ -268,6 +381,7 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
   card: {
@@ -293,6 +407,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
+  consentContainer: {
+    marginBottom: 18,
+  },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -303,9 +420,34 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   consentText: {
     fontSize: 13,
     flex: 1,
+    lineHeight: 19,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  submitError: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  signInLink: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  signInText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

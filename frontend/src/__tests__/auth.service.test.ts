@@ -7,6 +7,7 @@ import {
   getCurrentUser,
   logout,
 } from '@/services/auth.service';
+import { describe, beforeEach, test, expect } from 'vitest';
 
 describe('SUBIDHA Authentication & Role Separation Flows', () => {
   beforeEach(() => {

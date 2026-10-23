@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ROUTES } from '@/routes';
 import {
   View,
   Text,
@@ -10,7 +11,7 @@ import {
   useWindowDimensions,
   Linking,
 } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu,
   X,
@@ -26,7 +27,7 @@ import {
   Truck,
   Smartphone,
   Search,
-} from 'lucide-react-native';
+} from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { AppLogo } from '@/components/common/AppLogo';
@@ -48,10 +49,12 @@ export interface DashboardShellProps {
   onTriggerSos?: () => void;
 }
 
+
 export const DashboardShell: React.FC<DashboardShellProps> = ({
   roleLabel,
   navItems,
   bottomGridItems,
+  maxFrameWidth = 1320,
   children,
   onTriggerSos,
 }) => {
@@ -90,21 +93,26 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     }
   };
 
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const footerItems = bottomGridItems || navItems.slice(0, 4);
 
   const handleLogout = async () => {
     setDrawerOpen(false);
-    await logoutUser();
-    router.replace('/');
+    try{
+      await logoutUser();
+      navigate(ROUTES.home, { replace: true });
+    } catch{
+      showToast('Unable to sign out. Please try again.');
+    }
   };
 
   const handleDownloadApp = () => {
-    showToast('Redirecting to SUBIDHA Mobile App Download (iOS & Android)...');
-    Linking.openURL('https://expo.dev').catch(() => {});
+    showToast(
+      'The SUBIDHA mobile app is coming soon. Please use our website for now.'
+    );
   };
 
   const renderNavIcon = (iconName: string | undefined, color: string) => {
@@ -125,25 +133,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* MOBILE INSPECT TOP "GET THE APP" BANNER (Matches image_60584b.jpg) */}
-      {!isDesktop && showMobileAppBanner ? (
-        <View style={styles.getAppBanner}>
-          <View style={styles.getAppLeft}>
-            <Pressable onPress={() => setShowMobileAppBanner(false)}>
-              <X size={16} color="#FFFFFF" />
-            </Pressable>
-            <View style={styles.appBadgeIcon}>
-              <Smartphone size={16} color="#065F46" />
-            </View>
-            <View>
-              <Text style={styles.getAppTitle}>Get The SUBIDHA App</Text>
-              <Text style={styles.getAppSub}>For Faster Live Tracking & SOS</Text>
-            </View>
-          </View>
-          <Pressable onPress={handleDownloadApp} style={styles.useAppBtn}>
-            <Text style={styles.useAppBtnText}>Use App</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      
 
       {/* STICKY TOP NAVBAR (Wide Blinkit-style on Desktop, Compact on Mobile) */}
       <View
@@ -322,7 +312,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                 return (
                   <Pressable
                     key={item.href}
-                    onPress={() => router.push(item.href as any)}
+                    onPress={() => navigate(item.href as any)}
                     style={[
                       styles.desktopNavItem,
                       {
@@ -379,12 +369,19 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             styles.mainScrollContent,
             {
               paddingHorizontal: isDesktop ? 32 : 14,
-              paddingVertical: isDesktop ? 28 : 14,
+              paddingTop: isDesktop ? 28 : 14,
+              paddingBottom: isDesktop ? 28 : 20,
             },
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.wideContainer}>{children}</View>
+          <View 
+          style={[
+            styles.wideContainer,
+            { maxWidth: maxFrameWidth },
+            ]}>
+              {children}
+          </View>
         </ScrollView>
       </View>
 
@@ -405,7 +402,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             return (
               <Pressable
                 key={item.href}
-                onPress={() => router.push(item.href as any)}
+                onPress={() => navigate(item.href as any)}
                 style={styles.footerGridCell}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
@@ -480,7 +477,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                     key={item.href}
                     onPress={() => {
                       setDrawerOpen(false);
-                      router.push(item.href as any);
+                      navigate(item.href as any);
                     }}
                     style={[
                       styles.desktopNavItem,
@@ -650,6 +647,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     width: '100%',
+    height: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
   },
   getAppBanner: {
     backgroundColor: '#15803D',
@@ -789,6 +789,7 @@ const styles = StyleSheet.create({
   },
   bodyWrapper: {
     flex: 1,
+    minHeight: 0,
     flexDirection: 'row',
     width: '100%',
   },
@@ -848,20 +849,27 @@ const styles = StyleSheet.create({
   },
   mainScroll: {
     flex: 1,
+    minHeight: 0,
+    width: '100%',
   },
   mainScrollContent: {
     width: '100%',
   },
   wideContainer: {
-    maxWidth: 1320,
+    maxWidth: 1440,
     width: '100%',
     alignSelf: 'center',
+    minWidth: 0,
   },
   bottomFooterGrid: {
+    flexShrink: 0,
+    zIndex: 20,
     flexDirection: 'row',
     borderTopWidth: 1,
-    paddingVertical: 10,
+    paddingTop: 9,
+    paddingBottom: 9,
     paddingHorizontal: 8,
+    minHeight: 66,
     justifyContent: 'space-around',
     alignItems: 'center',
   },

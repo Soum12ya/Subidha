@@ -1,40 +1,79 @@
-import React, { useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+
+import { ROUTES } from '@/routes';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
-import { registerBusiness } from '@/services/auth.service';
+import {
+  registerBusiness,
+  normalizeIndianPhone,
+} from '@/services/auth.service';
+
 import { AppLogo } from '@/components/common/AppLogo';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { FormField } from '@/components/common/FormField';
 import { PrimaryButton } from '@/components/common/Buttons';
 
 const businessSchema = z.object({
-  businessName: z.string().min(2, 'Business name is required'),
-  contactPersonName: z.string().min(2, 'Contact person name is required'),
+  businessName: z.string().trim().min(2, 'Business name is required'),
+  contactPersonName: z
+    .string()
+    .trim()
+    .min(2, 'Contact person name is required'),
   phone: z
     .string()
     .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
-  businessEmail: z.string().email('Enter a valid business email'),
-  businessCategory: z.string().min(2, 'Business category is required'),
-  city: z.string().min(2, 'City is required'),
-  businessAddress: z.string().min(5, 'Business address is required'),
-  operationalSize: z.string().min(2, 'Approximate operational need is required'),
-  consentAccepted: z.boolean().refine((v) => v === true, {
+  businessEmail: z
+    .string()
+    .email('Enter a valid business email'),
+  businessCategory: z
+    .string()
+    .trim()
+    .min(2, 'Business category is required'),
+  city: z.string().trim().min(2, 'City is required'),
+  businessAddress: z
+    .string()
+    .trim()
+    .min(5, 'Business address is required'),
+  operationalSize: z
+    .string()
+    .trim()
+    .min(2, 'Approximate operational need is required'),
+  consentAccepted: z.boolean().refine((value) => value, {
     message: 'Please accept the partner terms and privacy notice',
   }),
 });
 
 type BusinessFormValues = z.infer<typeof businessSchema>;
 
+interface SignupLocationState {
+  phone?: string;
+}
+
 export default function BusinessSignupPage() {
   const { colors } = useAppTheme();
-  const { prefilledPhone, setSelectedRole } = useAppState();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ phone?: string }>();
+  const {
+    prefilledPhone,
+    setSelectedRole,
+    setPrefilledPhone,
+  } = useAppState();
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = (location.state ?? {}) as SignupLocationState;
+
+  const [submitError, setSubmitError] = useState('');
 
   const {
     control,
@@ -46,7 +85,7 @@ export default function BusinessSignupPage() {
     defaultValues: {
       businessName: '',
       contactPersonName: '',
-      phone: params.phone || prefilledPhone || '',
+      phone: normalizeIndianPhone(params.phone || prefilledPhone || ''),
       businessEmail: '',
       businessCategory: 'Pharmacy / Retail / Clinic',
       city: 'Kolkata',
@@ -58,23 +97,48 @@ export default function BusinessSignupPage() {
 
   useEffect(() => {
     setSelectedRole('business');
-    if (params.phone) {
-      setValue('phone', params.phone);
+
+    const phoneToUse = params.phone || prefilledPhone;
+
+    if (phoneToUse) {
+      setValue('phone', normalizeIndianPhone(phoneToUse), {
+        shouldValidate: true,
+      });
     }
-  }, [params.phone, setSelectedRole, setValue]);
+  }, [params.phone, prefilledPhone, setSelectedRole, setValue]);
 
   const onSubmit = async (values: BusinessFormValues) => {
-    await registerBusiness(values);
-    router.push({
-      pathname: '/auth/verify-otp',
-      params: { phone: values.phone, role: 'business' },
-    });
+    setSubmitError('');
+
+    const normalizedValues = {
+      ...values,
+      phone: normalizeIndianPhone(values.phone),
+    };
+
+    try {
+      await registerBusiness(normalizedValues);
+
+      setPrefilledPhone(normalizedValues.phone);
+      setSelectedRole('business');
+
+      navigate(ROUTES.auth.verifyOtp, {
+        state: {
+          phone: normalizedValues.phone,
+          role: 'business',
+        },
+      });
+    } catch {
+      setSubmitError(
+        'We could not complete your registration. Please check your details and try again.',
+      );
+    }
   };
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={styles.outer}
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.topRow}>
         <AppLogo />
@@ -84,23 +148,38 @@ export default function BusinessSignupPage() {
       <View
         style={[
           styles.card,
-          { backgroundColor: colors.cardBackground, borderColor: colors.border },
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+          },
         ]}
       >
         <Text style={[styles.eyebrow, { color: colors.primaryAccent }]}>
           BUSINESS PARTNER ONBOARDING
         </Text>
+
         <Text style={[styles.title, { color: colors.primaryText }]}>
           Register Your Business Logistics Account
         </Text>
+
         <View
           style={[
             styles.onboardingBanner,
-            { backgroundColor: colors.secondaryBackground, borderColor: colors.border },
+            {
+              backgroundColor: colors.secondaryBackground,
+              borderColor: colors.border,
+            },
           ]}
         >
-          <Text style={[styles.onboardingText, { color: colors.secondaryText }]}>
-            How SUBIDHA Supports Partners: Centralize daily customer deliveries, inter-branch transfers, and field errands with predictable subscription capacity and verified agents.
+          <Text
+            style={[
+              styles.onboardingText,
+              { color: colors.secondaryText },
+            ]}
+          >
+            How SUBIDHA Supports Partners: Centralize daily customer
+            deliveries, inter-branch transfers, and field errands with
+            predictable subscription capacity and verified agents.
           </Text>
         </View>
 
@@ -143,7 +222,7 @@ export default function BusinessSignupPage() {
               keyboardType="phone-pad"
               maxLength={10}
               value={value}
-              onChangeText={(t) => onChange(t.replace(/\D/g, ''))}
+              onChangeText={(text) => onChange(text.replace(/\D/g, ''))}
               error={errors.phone?.message}
             />
           )}
@@ -225,7 +304,7 @@ export default function BusinessSignupPage() {
           control={control}
           name="consentAccepted"
           render={({ field: { onChange, value } }) => (
-            <View style={{ marginBottom: 18 }}>
+            <View style={styles.consentContainer}>
               <Pressable
                 onPress={() => onChange(!value)}
                 style={styles.checkboxRow}
@@ -237,22 +316,52 @@ export default function BusinessSignupPage() {
                     styles.checkbox,
                     {
                       borderColor: colors.primaryAccent,
-                      backgroundColor: value ? colors.primaryAccent : 'transparent',
+                      backgroundColor: value
+                        ? colors.primaryAccent
+                        : 'transparent',
                     },
                   ]}
-                />
-                <Text style={[styles.consentText, { color: colors.secondaryText }]}>
-                  I accept the SUBIDHA Partner Logistics Terms and Privacy Policy (Demo Account).
+                >
+                  {value ? (
+                    <Text
+                      style={[
+                        styles.checkmark,
+                        { color: colors.buttonTextOnAccent },
+                      ]}
+                    >
+                      ✓
+                    </Text>
+                  ) : null}
+                </View>
+
+                <Text
+                  style={[
+                    styles.consentText,
+                    { color: colors.secondaryText },
+                  ]}
+                >
+                  I accept the SUBIDHA Partner Logistics Terms and Privacy
+                  Policy (Demo Account).
                 </Text>
               </Pressable>
+
               {errors.consentAccepted ? (
-                <Text style={{ color: colors.sos, fontSize: 12, marginTop: 4 }}>
+                <Text style={[styles.errorText, { color: colors.sos }]}>
                   {errors.consentAccepted.message}
                 </Text>
               ) : null}
             </View>
           )}
         />
+
+        {submitError ? (
+          <Text
+            accessibilityRole="alert"
+            style={[styles.submitError, { color: colors.sos }]}
+          >
+            {submitError}
+          </Text>
+        ) : null}
 
         <PrimaryButton
           label="Register Partner & Verify OTP"
@@ -262,11 +371,30 @@ export default function BusinessSignupPage() {
         />
 
         <Pressable
-          onPress={() => router.push('/auth/login/business')}
-          style={{ marginTop: 16, alignItems: 'center' }}
+          accessibilityRole="button"
+          onPress={() => navigate(ROUTES.auth.login.business)}
+          style={styles.signInLink}
         >
-          <Text style={{ color: colors.primaryAccent, fontSize: 14, fontWeight: '600' }}>
+          <Text
+            style={[
+              styles.signInText,
+              { color: colors.primaryAccent },
+            ]}
+          >
             Already have a Partner account? Sign In
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            setSelectedRole('customer');
+            navigate(ROUTES.auth.signup.customer);
+          }}
+          style={styles.signInLink}
+        >
+          <Text style={[styles.signInText, { color: colors.secondaryText }]}>
+            Want to register as Customer? Register as Customer
           </Text>
         </Pressable>
       </View>
@@ -286,6 +414,7 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
   card: {
@@ -316,6 +445,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
+  consentContainer: {
+    marginBottom: 18,
+  },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -326,9 +458,34 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   consentText: {
     fontSize: 13,
     flex: 1,
+    lineHeight: 19,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  submitError: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  signInLink: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  signInText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

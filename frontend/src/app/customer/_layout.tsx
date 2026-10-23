@@ -1,62 +1,115 @@
+
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Slot, useRouter } from 'expo-router';
+import { Outlet, useNavigate } from 'react-router-dom';
+
+import { ROUTES } from '@/routes';
 import { useAppState } from '@/context/AppStateContext';
 import { useAppTheme } from '@/context/ThemeContext';
-import { DashboardShell, NavItemConfig } from '@/components/layout/DashboardShell';
+
+import DashboardShell, {
+  type NavItemConfig,
+} from '@/components/layout/DashboardShell';
+
 import { PrimaryButton } from '@/components/common/Buttons';
 import { ModalDialog } from '@/components/common/ModalDialog';
 
-// Replace Siren, Wrench, Train with universally supported AlertTriangle, Settings, Compass:
-import {
-  AlertTriangle,
-  UserCheck,
-  Package,
-  Settings,
-  Compass,
-  ArrowRight,
-} from 'lucide-react-native';
-
-// Full Sidebar Navigation Menu
 const CUSTOMER_SIDEBAR_NAV: NavItemConfig[] = [
-  { label: 'Home Dashboard', href: '/customer/dashboard', icon: 'home' },
-  { label: 'Request Personal Escort', href: '/customer/services', icon: 'tasks' },
-  { label: 'Active Task & Store Bills', href: '/customer/bookings', icon: 'bills' },
-  { label: 'Profile & Ledger', href: '/customer/profile', icon: 'profile' },
+  {
+    label: 'Home Dashboard',
+    href: ROUTES.customer.dashboard,
+    icon: 'home',
+  },
+  {
+    label: 'Request Personal Escort',
+    href: ROUTES.customer.services,
+    icon: 'tasks',
+  },
+  {
+    label: 'Active Task & Store Bills',
+    href: ROUTES.customer.bookings,
+    icon: 'bills',
+  },
+  {
+    label: 'Profile & Ledger',
+    href: ROUTES.customer.profile,
+    icon: 'profile',
+  },
 ];
 
-// Bottom 4-Grid Footer matching 01_B2C_Home_Dashboard.png
 const CUSTOMER_BOTTOM_GRID: NavItemConfig[] = [
-  { label: 'Home', href: '/customer/dashboard', icon: 'home' },
-  { label: 'Tasks', href: '/customer/services', icon: 'tasks' },
-  { label: 'Bills', href: '/customer/bookings', icon: 'bills' },
-  { label: 'Profile', href: '/customer/profile', icon: 'profile' },
+  {
+    label: 'Home',
+    href: ROUTES.customer.dashboard,
+    icon: 'home',
+  },
+  {
+    label: 'Tasks',
+    href: ROUTES.customer.services,
+    icon: 'tasks',
+  },
+  {
+    label: 'Bills',
+    href: ROUTES.customer.bookings,
+    icon: 'bills',
+  },
+  {
+    label: 'Profile',
+    href: ROUTES.customer.profile,
+    icon: 'profile',
+  },
 ];
 
 export default function CustomerLayout() {
   const { user } = useAppState();
   const { colors } = useAppTheme();
-  const router = useRouter();
+  const navigate = useNavigate();
+
   const [sosModalVisible, setSosModalVisible] = useState(false);
 
   if (!user || user.role !== 'customer') {
     return (
-      <View style={[styles.guardBox, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.guardBox,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <View
           style={[
             styles.guardCard,
-            { backgroundColor: colors.cardBackground, borderColor: colors.border },
+            {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border,
+            },
           ]}
         >
-          <Text style={[styles.guardTitle, { color: colors.primaryText }]}>
+          <Text
+            style={[
+              styles.guardTitle,
+              { color: colors.primaryText },
+            ]}
+          >
             Customer Account Required
           </Text>
-          <Text style={[styles.guardDesc, { color: colors.secondaryText }]}>
-            Please sign in with a registered Customer mobile number (+91 9876543210).
+
+          <Text
+            style={[
+              styles.guardDesc,
+              { color: colors.secondaryText },
+            ]}
+          >
+            Please sign in with a registered Customer mobile
+            number (+91 9876543210).
           </Text>
+
           <PrimaryButton
             label="Sign In as Customer"
-            onPress={() => router.replace('/auth/login/customer')}
+            onPress={() =>
+              navigate(ROUTES.auth.login.customer, {
+                replace: true,
+              })
+            }
           />
         </View>
       </View>
@@ -69,19 +122,25 @@ export default function CustomerLayout() {
         roleLabel="SENIOR PASS ACTIVE"
         navItems={CUSTOMER_SIDEBAR_NAV}
         bottomGridItems={CUSTOMER_BOTTOM_GRID}
-        maxFrameWidth={480}
+        maxFrameWidth={1320}
         onTriggerSos={() => setSosModalVisible(true)}
       >
-        <Slot />
+        <Outlet />
       </DashboardShell>
 
       <ModalDialog
         visible={sosModalVisible}
         variant="danger"
         title="CRITICAL SOS EMERGENCY RADAR"
-        description={`Countdown: 3... 2... 1... Triggering Alerts (Simulated)\n\n• [Ambulance Liaison Contacted]\n• [Family Contacts Notified via SMS: ${
+        description={`Countdown: 3... 2... 1... Triggering Alerts (Simulated)
+
+• [Ambulance Liaison Contacted]
+• [Family Contacts Notified via SMS: ${
           user.emergencyContactName || 'Meera Sen'
-        }]\n• [Nearest Agent Rahul S. Redirected]\n\n(Note: Prototype simulation only.)`}
+        }]
+• [Nearest Agent Rahul S. Redirected]
+
+(Note: Prototype simulation only.)`}
         primaryLabel="Cancel / Acknowledge Demo SOS"
         onPrimaryPress={() => setSosModalVisible(false)}
       />

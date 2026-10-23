@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, Home, Hospital } from 'lucide-react-native';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, MapPin, Home, Hospital } from 'lucide-react';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { DEMO_SERVICES } from '@/mocks/services';
@@ -9,12 +9,15 @@ import { DEMO_SERVICES } from '@/mocks/services';
 export default function CustomerServiceBookingPage() {
   const { colors } = useAppTheme();
   const { addCustomerBooking } = useAppState();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ serviceId?: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const serviceId = searchParams.get('serviceId');
 
   const [selectedServiceId, setSelectedServiceId] = useState(
-    params.serviceId || 'srv-medical-escort'
+    serviceId || 'srv-medical-escort'
   );
+
   const [pickupLocation, setPickupLocation] = useState(
     'Apollo Pharmacy, Sector 14'
   );
@@ -44,7 +47,7 @@ export default function CustomerServiceBookingPage() {
         dropOrVenueLocation: dropLocation,
         instructions,
       });
-      router.push('/customer/bookings');
+      navigate('/customer/bookings');
     } finally {
       setSubmitting(false);
     }
@@ -54,7 +57,7 @@ export default function CustomerServiceBookingPage() {
     <View style={styles.container}>
       {/* Top Header Row matching 02_B2C_Personal_Booking.png */}
       <View style={[styles.headerRow, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => navigate(-1)} style={styles.backBtn}>
           <ArrowLeft size={20} color={colors.primaryText} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.primaryText }]}>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   View,
@@ -5,64 +6,97 @@ import {
   Pressable,
   StyleSheet,
   useWindowDimensions,
-  Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Menu, X, Smartphone } from 'lucide-react-native';
+import { useNavigate } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
+
+import { ROUTES } from '@/routes';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useAppState } from '@/context/AppStateContext';
 import { AppLogo } from '@/components/common/AppLogo';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
-import { PrimaryButton, SecondaryButton } from '@/components/common/Buttons';
+import {
+  SecondaryButton,
+} from '@/components/common/Buttons';
 
-// Replace with your production Play Store / App Store / APK link when ready
-const FUTURE_APP_DOWNLOAD_URL = 'https://expo.dev';
+type NavItem = {
+  label: string;
+  href?: string;
+  action?: () => void;
+};
 
 export const PublicNavbar: React.FC = () => {
   const { colors } = useAppTheme();
-  const { user, setSelectedRole, showToast } = useAppState();
+  const { user, setSelectedRole } = useAppState();
   const { width } = useWindowDimensions();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showSmartBanner, setShowSmartBanner] = useState(true);
 
   const isDesktop = width >= 1024;
 
-  const navItems = [
-    { label: 'Services', href: '/services' },
-    { label: 'How It Works', href: '/about' },
-    { label: 'Subscription Plans', href: '/plans' },
+  const navItems: NavItem[] = [
+    {
+      label: 'Services',
+      href: ROUTES.services,
+    },
+    {
+      label: 'How It Works',
+      href: ROUTES.about,
+    },
+    {
+      label: 'Subscription Plans',
+      href: ROUTES.plans,
+    },
     {
       label: 'For Businesses',
       action: () => {
         setSelectedRole('business');
-        router.push('/auth/login/business');
+        navigate(ROUTES.auth.login.business);
       },
     },
     {
       label: 'For Individuals',
       action: () => {
         setSelectedRole('customer');
-        router.push('/auth/login/customer');
+        navigate(ROUTES.auth.login.customer);
       },
     },
-    { label: 'About Us', href: '/about' },
+    {
+      label: 'About Us',
+      href: ROUTES.about,
+    },
   ];
 
   const handleDashboardRedirect = () => {
     if (!user) {
-      router.push('/auth');
+      navigate(ROUTES.auth.index);
       return;
     }
-    router.push(
-      user.role === 'customer' ? '/customer/dashboard' : '/business/dashboard'
+
+    navigate(
+      user.role === 'customer'
+        ? ROUTES.customer.dashboard
+        : ROUTES.business.dashboard,
     );
   };
 
-  const handleDownloadMobileApp = () => {
-    showToast('Redirecting to SUBIDHA Mobile App download (Android & iOS)...');
-    Linking.openURL(FUTURE_APP_DOWNLOAD_URL).catch(() => {});
+  const handleNavItemPress = (item: NavItem) => {
+    setMobileMenuOpen(false);
+
+    if (item.action) {
+      item.action();
+      return;
+    }
+
+    if (item.href) {
+      navigate(item.href);
+    }
+  };
+
+  const handleSignIn = () => {
+    setMobileMenuOpen(false);
+    navigate(ROUTES.auth.login.index);
   };
 
   return (
@@ -75,86 +109,62 @@ export const PublicNavbar: React.FC = () => {
         },
       ]}
     >
-      {/* Mobile-Only Top App Banner (Like Blinkit Mobile Inspect image_60584b.jpg) */}
-      {!isDesktop && showSmartBanner ? (
-        <View style={styles.smartAppBanner}>
-          <View style={styles.smartBannerLeft}>
-            <Pressable
-              onPress={() => setShowSmartBanner(false)}
-              accessibilityLabel="Close app banner"
-            >
-              <X size={16} color="#FFFFFF" />
-            </Pressable>
-            <View style={styles.smartBannerIcon}>
-              <Smartphone size={16} color="#065F46" />
-            </View>
-            <View>
-              <Text style={styles.smartBannerTitle}>Get The SUBIDHA App</Text>
-              <Text style={styles.smartBannerSub}>
-                For Better Experience & Live SOS
-              </Text>
-            </View>
-          </View>
-          <Pressable
-            onPress={handleDownloadMobileApp}
-            style={styles.useAppPill}
-          >
-            <Text style={styles.useAppPillText}>Use App</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
       <View style={styles.inner}>
         <AppLogo />
 
-        {isDesktop ? (
+        {isDesktop && (
           <View style={styles.desktopLinks}>
             {navItems.map((item) => (
               <Pressable
                 key={item.label}
-                onPress={() => {
-                  if (item.action) item.action();
-                  else if (item.href) router.push(item.href as any);
-                }}
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                onPress={() => handleNavItemPress(item)}
+                style={({ pressed }) => [
+                  styles.navPressable,
+                  { opacity: pressed ? 0.65 : 1 },
+                ]}
+                accessibilityRole="button"
               >
-                <Text style={[styles.navLink, { color: colors.secondaryText }]}>
+                <Text
+                  style={[
+                    styles.navLink,
+                    { color: colors.secondaryText },
+                  ]}
+                >
                   {item.label}
                 </Text>
               </Pressable>
             ))}
           </View>
-        ) : null}
+        )}
 
         <View style={styles.rightActions}>
           <ThemeToggle />
+
           {isDesktop ? (
-            <>
-              {user ? (
-                <SecondaryButton
-                  label={
-                    user.role === 'customer'
-                      ? 'Customer Dashboard'
-                      : 'Business Console'
-                  }
-                  onPress={handleDashboardRedirect}
-                />
-              ) : (
-                <SecondaryButton
-                  label="Sign In"
-                  onPress={() => router.push('/auth/login')}
-                />
-              )}
-              <PrimaryButton
-                label="Download Mobile App"
-                onPress={handleDownloadMobileApp}
+            user ? (
+              <SecondaryButton
+                label={
+                  user.role === 'customer'
+                    ? 'Customer Dashboard'
+                    : 'Business Console'
+                }
+                onPress={handleDashboardRedirect}
               />
-            </>
+            ) : (
+              <SecondaryButton
+                label="Sign In"
+                onPress={handleSignIn}
+              />
+            )
           ) : (
             <Pressable
-              onPress={() => setMobileMenuOpen((v) => !v)}
+              onPress={() => setMobileMenuOpen((open) => !open)}
               accessibilityRole="button"
-              accessibilityLabel="Toggle navigation menu"
+              accessibilityLabel={
+                mobileMenuOpen
+                  ? 'Close navigation menu'
+                  : 'Open navigation menu'
+              }
               style={[
                 styles.menuBtn,
                 {
@@ -173,7 +183,7 @@ export const PublicNavbar: React.FC = () => {
         </View>
       </View>
 
-      {!isDesktop && mobileMenuOpen ? (
+      {!isDesktop && mobileMenuOpen && (
         <View
           style={[
             styles.mobileDrawer,
@@ -186,18 +196,21 @@ export const PublicNavbar: React.FC = () => {
           {navItems.map((item) => (
             <Pressable
               key={item.label}
-              onPress={() => {
-                setMobileMenuOpen(false);
-                if (item.action) item.action();
-                else if (item.href) router.push(item.href as any);
-              }}
+              onPress={() => handleNavItemPress(item)}
               style={styles.mobileLinkItem}
+              accessibilityRole="button"
             >
-              <Text style={[styles.mobileLinkText, { color: colors.primaryText }]}>
+              <Text
+                style={[
+                  styles.mobileLinkText,
+                  { color: colors.primaryText },
+                ]}
+              >
                 {item.label}
               </Text>
             </Pressable>
           ))}
+
           <View style={styles.mobileCtaRow}>
             {user ? (
               <SecondaryButton
@@ -212,23 +225,12 @@ export const PublicNavbar: React.FC = () => {
               <SecondaryButton
                 label="Sign In"
                 fullWidth
-                onPress={() => {
-                  setMobileMenuOpen(false);
-                  router.push('/auth/login');
-                }}
+                onPress={handleSignIn}
               />
             )}
-            <PrimaryButton
-              label="Download Mobile App"
-              fullWidth
-              onPress={() => {
-                setMobileMenuOpen(false);
-                handleDownloadMobileApp();
-              }}
-            />
           </View>
         </View>
-      ) : null}
+      )}
     </View>
   );
 };
@@ -239,48 +241,9 @@ const styles = StyleSheet.create({
   header: {
     borderBottomWidth: 1,
     width: '100%',
+    zIndex: 10,
   },
-  smartAppBanner: {
-    backgroundColor: '#15803D',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  smartBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  smartBannerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FDE047',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  smartBannerTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  smartBannerSub: {
-    color: '#DCFCE7',
-    fontSize: 11,
-  },
-  useAppPill: {
-    backgroundColor: '#000000',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  useAppPillText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
+
   inner: {
     maxWidth: 1360,
     width: '100%',
@@ -290,39 +253,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 16,
   },
+
   desktopLinks: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
     gap: 24,
+    flex: 1,
   },
+
+  navPressable: {
+    paddingVertical: 6,
+  },
+
   navLink: {
     fontSize: 14,
     fontWeight: '600',
   },
+
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
+
   menuBtn: {
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
   },
+
   mobileDrawer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
     gap: 10,
   },
+
   mobileLinkItem: {
     paddingVertical: 10,
   },
+
   mobileLinkText: {
     fontSize: 15,
     fontWeight: '600',
   },
+
   mobileCtaRow: {
     marginTop: 8,
     gap: 10,
